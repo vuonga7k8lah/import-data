@@ -19,7 +19,7 @@ class CustomerController
 		add_action('tn_import_init_data_customer', [$this, 'initSetupDataCustomer']);
 		add_action('tn_import_init_data', [$this, 'initSetupData']);
 		$this->oFaker = Factory::create();
-		//add_action( 'kma-vuong-dttn', [$this,'test'] );
+		//add_action( 'init', [$this,'test'] );
 	}
 
 	function isa_add_every_five_minutes($schedules)
@@ -42,22 +42,28 @@ class CustomerController
 
 	public function handleScheduleSingle()
 	{
-		$this->clearSchedule();
+		//$this->clearSchedule();
 		//set update user after 3 minutes
-		wp_schedule_single_event(time() + 180, 'tn_import_init_data_customer');
+		//wp_schedule_single_event(time() + 180, 'tn_import_init_data_customer');
 		//set update user after 5 minutes
-		wp_schedule_single_event(time() + 300, 'tn_import_init_data_product');
+		//wp_schedule_single_event(time() + 300, 'tn_import_init_data_product');
 		//set update user after 10 minutes
 		wp_schedule_single_event(time() + 600, 'tn_import_init_data');
-		//wp_schedule_single_event(time(), 'every_three_minutes', 'isa_add_every_three_minutes');
-		//wp_schedule_single_event(time(), 'every_15_minutes', 'isa_add_every_15_minutes');
+
 	}
 
 	public function clearSchedule()
 	{
-		wp_clear_scheduled_hook('isa_add_every_three_minutes');
-		wp_clear_scheduled_hook('isa_add_every_15_minutes');
-		wp_clear_scheduled_hook('isa_add_every_five_minutes');
+
+		if (wp_next_scheduled('tn_import_init_data_customer')) {
+			wp_clear_scheduled_hook('tn_import_init_data_customer');
+		}
+		if (wp_next_scheduled('tn_import_init_data_product')) {
+			wp_clear_scheduled_hook('tn_import_init_data_product');
+		}
+		if (wp_next_scheduled('tn_import_init_data')) {
+			wp_clear_scheduled_hook('tn_import_init_data');
+		}
 	}
 
 	public function handleSchedule()
@@ -75,8 +81,10 @@ class CustomerController
 
 	function test()
 	{
-		error_log("test schedule ghi vao:");
-		error_log(date("Y-m-d H:i:s"));
+		$aUser = json_decode(file_get_contents(TN_IMPORT_DATA_PATH . 'assets/data/dataUser.json'), true);
+		$aUserRandom = $aUser[rand(0, count($aUser))];
+		var_dump($aUserRandom);
+		die();
 	}
 
 	function initSetupData()
@@ -129,7 +137,7 @@ class CustomerController
 
 		if ($this->getCountUser() < (int)Option::getNumberCustomer()) {
 			$aUser = [];
-			for ($i = 0; $i < (int)Option::getNumberCustomer(); $i++) {
+			for ($i = 0; $i < 200; $i++) {
 				try {
 					$aDataUser = [
 						'user_login'   => $generator->getName(),
@@ -139,8 +147,8 @@ class CustomerController
 						'user_pass'    => md5('admin'),
 						'user_email'   => $generator->getName() . uniqid() . '@gmail.com',
 					];
-					$userId = $this->createUser($aDataUser);
-					$aUser[$userId] = $aDataUser;
+					$this->createUser($aDataUser);
+					$aUser[] = $aDataUser;
 				}
 				catch (\Exception $exception) {
 					continue;
@@ -180,16 +188,15 @@ class CustomerController
 		$aUser = json_decode(file_get_contents(TN_IMPORT_DATA_PATH . 'assets/data/dataUser.json'), true);
 		$limitImport = (int)Option::getNumberComment();
 		if ($this->getCountComment() < $limitImport) {
-			for ($i = 0; $i < $limitImport; $i++) {
+			for ($i = 0; $i < 200; $i++) {
 				//random user
 				$aUserRandom = $aUser[rand(0, count($aUser))];
 				$this->addComment([
 					'comment_post_ID'      => $this->randomProductId() ?? 33,
 					'comment_content'      => $this->oFaker->text,
-					'user_id'              => $aUserRandom['ID'],
-					'comment_author'       => $aUserRandom['user_login'],
-					'comment_author_email' => $aUserRandom['user_email'],
-					'comment_author_url'   => $aUserRandom['user_url']
+					'user_id'              => $aUserRandom['ID'] ?? '',
+					'comment_author'       => $aUserRandom['user_login'] ?? '',
+					'comment_author_email' => $aUserRandom['user_email'] ?? ''
 				]);
 			}
 		}
@@ -200,16 +207,17 @@ class CustomerController
 		$aUser = json_decode(file_get_contents(TN_IMPORT_DATA_PATH . 'assets/data/dataUser.json'), true);
 		$limitImport = (int)Option::getNumberReview();
 		if ($this->getCountReview() < $limitImport) {
-			for ($i = 0; $i < $limitImport; $i++) {
+			for ($i = 0; $i < 100; $i++) {
 				//random user
-				$aUserRandom = $aUser[rand(0, count($aUser))];
+				$aUserRandom = $aUser[rand(0, count($aUser) - 1)];
 				$this->addComment([
 					'comment_post_ID'      => $this->randomProductId() ?? 33,
 					'comment_content'      => $this->oFaker->text(),
-					'user_id'              => $aUserRandom['ID'],
-					'comment_author'       => $aUserRandom['user_login'],
-					'comment_author_email' => $aUserRandom['user_email'],
-					'comment_author_url'   => $aUserRandom['user_url'],
+					'user_id'              => $aUserRandom['ID'] ?? '',
+					'comment_author'       => $aUserRandom['user_login'] ?? '',
+					'comment_author_email' => $aUserRandom['user_email'] ?? '',
+					'comment_author_url'   => '',
+					'comment_type'         => 'review',
 					'comment_meta'         => [
 						//random rating
 						'rating' => rand(1, 5)
@@ -223,7 +231,7 @@ class CustomerController
 	{
 		$limitImport = (int)Option::getNumberOrder();
 		if ($this->getCountOrder() < $limitImport) {
-			for ($i = 0; $i < $limitImport; $i++) {
+			for ($i = 0; $i < 100; $i++) {
 				//random user
 				$aAddress = [
 					'first_name' => $this->oFaker->firstName(),
@@ -250,8 +258,10 @@ class CustomerController
 
 	public function randomProductId(): int
 	{
-		$aListProductId = file_get_contents(TN_IMPORT_DATA_PATH . 'assets/data/listProductIds.json') ?? [];
-		$countProduct = count($aListProductId);
+		$aListProductId = json_decode(file_get_contents(TN_IMPORT_DATA_PATH . 'assets/data/listProductIds.json'), true)
+			??
+			[];
+		$countProduct = count($aListProductId) - 1;
 		return $aListProductId[rand(0, $countProduct)];
 	}
 }
