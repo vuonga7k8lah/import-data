@@ -1,0 +1,11 @@
+{
+  "autoload": {
+    "psr-4": {
+      "ImportData\\": "src/"
+    }
+  },
+  "require": {
+    "nubs/random-name-generator": "^2.2",
+    "fakerphp/faker": "^1.21"
+  }
+}
